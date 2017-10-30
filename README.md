@@ -22,6 +22,6 @@ index 8675308..8675309 100644
 
         public:
                 ThisClass() :
-Would you like to [A]ccept Change(s), [S]kip the file(s), [R]evert the file(s)?
+Would you like to [A]ccept Change(s), [S]kip the file(s), [M]odify the file(s), [R]evert the file(s), [Q]uit?
 
 ```
