@@ -77,7 +77,7 @@ goto :_func_main
   git diff %_cm_p_full_path%
 
   :: Do something with the changes
-  SET /p _cm_p_input="Would you like to [A]ccept Change(s), [S]kip the file(s), [R]evert the file(s)?"
+  SET /p _cm_p_input="Would you like to [A]ccept Change(s), [S]kip the file(s), [M]odify the file(s), [R]evert the file(s), [Q]uit?"
 
   IF "%_cm_p_input%"=="a" (
     git add %_cm_p_full_path%
@@ -95,6 +95,16 @@ goto :_func_main
     git checkout %_cm_p_full_path%
     ECHO "File reverted..."
     SET /a _cm_p_change_count=_cm_p_change_count-1
+  ) ELSE IF "%_cm_p_input%"=="M" (
+    vim %_cm_p_full_path%
+    GOTO :_func_process_row
+  ) ELSE IF "%_cm_p_input%"=="m" (
+    vim %_cm_p_full_path%
+    GOTO :_func_process_row
+  ) ELSE IF "%_cm_p_input%"=="Q" (
+    GOTO :_func_exit
+  ) ELSE IF "%_cm_p_input%"=="q" (
+    GOTO :_func_exit
   ) ELSE (
     ECHO "Skipping file..."
     SET /a _cm_p_skip_count=_cm_p_skip_count+1
