@@ -1,4 +1,5 @@
 @echo off
+setlocal
 
 :::::::::::::::::::::::::::::::::::::::::::::
 :: Script will get all the changes in the current git repo
