@@ -64,7 +64,7 @@ goto :_func_main
 
   FOR /F "%_cm_p_loop%" %%p IN ('%_cmd_git_diff%') DO (
     SET _cm_p_summary_row=%%p
-    goto :_func_process_row
+    goto :_func_call_process_row
   )
 
 :::::::::::::::::::::::::::::::::::::::::::::
@@ -73,21 +73,47 @@ goto :_func_main
 :: Process a single change in our current git repo
 :::::::::::::::::::::::::::::::::::::::::::::
 :_func_process_row
-  :: Get the full path to this change and display it
-  SET _cm_p_full_path=%_cm_p_git_root%/%_cm_p_summary_row%
-  git diff %_cm_p_full_path%
-
-  :: Do something with the changes
-  SET /p _cm_p_input="Would you like to [A]ccept Change(s), [S]kip the file(s), [M]odify the file(s), [R]evert the file(s), [Q]uit?"
+  :: Display the correct prompt for this file based on its change
+  IF "%_cm_p_change_type%"=="DELETE" (
+    SET /P _cm_p_input="Would you like to [A]ccept Delete(s), [S]kip the file(s), [R]evert the file(s), [Q]uit?"
+  ) ELSE IF "%_cm_p_change_type%"=="MODIFY" (
+    git diff %_cm_p_full_path%
+    SET /P _cm_p_input="Would you like to [A]ccept Change(s), [S]kip the file(s), [M]odify the file(s), [R]evert the file(s), [Q]uit?"
+  ) ELSE IF "%_cm_p_change_type%"=="ADD" (
+    git diff %_cm_p_full_path%
+    SET /P _cm_p_input="Would you like to [A]ccept Change(s), [S]kip the file(s), [M]odify the file(s), [R]evert the file(s), [Q]uit?"
+  ) ELSE (
+    ECHO "Skipping file..."
+    SET /a _cm_p_skip_count=_cm_p_skip_count+1
+    :: Go back to our process loop and find the next file with changes
+    goto :_func_process
+  )
 
   IF "%_cm_p_input%"=="a" (
-    git add %_cm_p_full_path%
+    
+    :: If the file was deleted, do an rm, else do an add
+    IF  "%_cm_p_change_type%"=="DELETE" (
+      git rm %_cm_p_full_path%
+    ) ELSE (
+      git add %_cm_p_full_path%
+    )
+
     ECHO "Accepted File Change^(s^)..."
     SET /a _cm_p_change_count=_cm_p_change_count-1
+
   ) ELSE IF "%_cm_p_input%"=="A" (
+    
+    :: If the file was deleted, do an rm, else do an add
+    IF  "%_cm_p_change_type%"=="DELETE" (
+      git rm %_cm_p_full_path%
+    ) ELSE (
+      git add %_cm_p_full_path%
+    )
+
     git add %_cm_p_full_path%
     ECHO "Accepted File Change^(s^)..."
     SET /a _cm_p_change_count=_cm_p_change_count-1
+
   ) ELSE IF "%_cm_p_input%"=="r" (
     git checkout %_cm_p_full_path%
     ECHO "File reverted..."
@@ -97,10 +123,10 @@ goto :_func_main
     ECHO "File reverted..."
     SET /a _cm_p_change_count=_cm_p_change_count-1
   ) ELSE IF "%_cm_p_input%"=="M" (
-    vim %_cm_p_full_path%
+    notepad %_cm_p_full_path%
     GOTO :_func_process_row
   ) ELSE IF "%_cm_p_input%"=="m" (
-    vim %_cm_p_full_path%
+    notepad %_cm_p_full_path%
     GOTO :_func_process_row
   ) ELSE IF "%_cm_p_input%"=="Q" (
     GOTO :_func_exit
@@ -112,8 +138,49 @@ goto :_func_main
   )
 
   cls
+  :: Go back to our process loop and find the next file with changes
   goto :_func_process
 
+::::::::::::::::::::::::::::::::::::::::::::::::
+:: Function: Call process row
+::
+:: Set's up meta data/paramters for the process_row function and then invokes it 
+:_func_call_process_row
+  :: Get the full path to this change and display it
+  SET _cm_p_full_path=%_cm_p_git_root%/%_cm_p_summary_row%
+
+  :: Resolve what type of change this is
+  git status %_cm_p_full_path% --short | findstr /I /C:" D "
+  IF %errorlevel% == 0 (
+    SET _cm_p_change_type=DELETE
+    goto :_func_process_row
+  )
+
+  git status %_cm_p_full_path% --short | findstr /I /C:" M "
+  IF %errorlevel% == 0 (
+    SET _cm_p_change_type=MODIFY
+    goto :_func_process_row
+  )
+
+  git status %_cm_p_full_path% --short | findstr /I /C:"MM "
+  IF %errorlevel% == 0 (
+    SET _cm_p_change_type=MODIFY
+    goto :_func_process_row
+  )
+
+  git status %_cm_p_full_path% --short | findstr /I /C:"UU "
+  IF %errorlevel% == 0 (
+    SET _cm_p_change_type=MODIFY
+    goto :_func_process_row
+  )
+
+  git status %_cm_p_full_path% --short | findstr /I /C:" A "
+  IF %errorlevel% == 0 (
+    SET _cm_p_change_type=ADD
+    goto :_func_process_row
+  )
+
+  goto :_func_process_row
 
 :_func_exit
   ECHO cm complete
